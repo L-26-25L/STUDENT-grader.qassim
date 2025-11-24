@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Grader</title>
+  <style>
+    body { background-color: #1a1a2e; color: #cbd5e1; font-family: Arial, sans-serif; padding: 20px; }
+    input, button { padding: 8px; margin: 4px; border-radius: 6px; border: none; }
+    input { width: 60px; }
+    button { background: #7f3fbf; color: white; cursor: pointer; }
+    .result { margin-top: 20px; padding: 10px; background: #16213e; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Student Grader</h1>
+  <div>
+    <label>Quiz 1: <input id="q1" type="number" value="0" /></label>
+    <label>Quiz 2: <input id="q2" type="number" value="0" /></label>
+    <label>Quiz 3: <input id="q3" type="number" value="0" /></label>
+    <label>Make-up Quiz: <input id="qm" type="number" value="0" /></label>
+  </div>
+  <div>
+    <label>Midterm (out of 100): <input id="mid" type="number" value="0" /></label>
+    <label>Practical (out of 100): <input id="prac" type="number" value="0" /></label>
+    <label>Final (out of 50): <input id="fin" type="number" value="0" /></label>
+  </div>
+  <div>
+    <label>Take Best N quizzes: <input id="take" type="number" value="2" /></label>
+  </div>
+  <button onclick="calc()">Calculate</button>
+
+  <div class="result" id="res">Results appear here</div>
+
+  <script>
+    function calc() {
+      const q = [
+        Number(document.getElementById('q1').value),
+        Number(document.getElementById('q2').value),
+        Number(document.getElementById('q3').value),
+        Number(document.getElementById('qm').value)
+      ];
+      const take = Number(document.getElementById('take').value);
+      q.sort((a,b)=>b-a);
+      const sumBest = q.slice(0, take).reduce((a,b)=>a+b, 0);
+      const mid = Number(document.getElementById('mid').value);
+      const prac = Number(document.getElementById('prac').value);
+      const fin = Number(document.getElementById('fin').value);
+
+      // Weights
+      const wQuizzes = 20;
+      const wMid = 25;
+      const wPrac = 5;
+      const totalCourseworkWeight = wQuizzes + wMid + wPrac;
+
+      // Normalize quiz sum to weight
+      // Assume each quiz max = 100
+      const quizPct = sumBest / (take * 100);
+      const quizWeighted = quizPct * wQuizzes;
+
+      const midPct = mid / 100;
+      const pracPct = prac / 100;
+      const midWeighted = midPct * wMid;
+      const pracWeighted = pracPct * wPrac;
+
+      const courseworkScore = quizWeighted + midWeighted + pracWeighted;
+      // Normalize to 50
+      const normalized = (courseworkScore / totalCourseworkWeight) * 50;
+
+      const finalPct = fin / 50;
+      const finalScore = finalPct * 50;
+
+      const total = normalized + finalScore;
+
+      document.getElementById('res').innerHTML = `
+        Best ${take} quizzes sum = ${sumBest.toFixed(2)} <br>
+        Coursework normalized = ${normalized.toFixed(2)} / 50 <br>
+        Final score = ${fin} → weighted part = ${finalScore.toFixed(2)} <br>
+        <strong>Total = ${total.toFixed(2)} / 100</strong>
+      `;
+    }
+  </script>
+</body>
+</html>
