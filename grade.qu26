@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Student Grader</title>
+  <style>
+    body { background:#1a1a2e; color:#cbd5e1; font-family:Arial, sans-serif; padding:20px }
+    .row { margin-bottom:8px }
+    label { display:inline-block; min-width:200px }
+    input[type="number"], button { padding:8px; margin:4px; border-radius:6px; border:none }
+    input[type="number"] { width:90px }
+    button { background:#7f3fbf; color:#fff; cursor:pointer }
+    .result { margin-top:16px; padding:10px; background:#16213e; border-radius:8px }
+    .error { color:#ff6b6b; font-weight:bold }
+    small { color:#9aa7bf; display:block; margin-top:-6px; margin-bottom:6px }
+  </style>
+</head>
+<body>
+  <h1>Student Grader (quizzes out of 10)</h1>
+
+  <div class="row">
+    <label>Quiz 1 (max 10): <input id="q1" type="number" min="0" max="10" value="0" /></label>
+    <label>Quiz 2 (max 10): <input id="q2" type="number" min="0" max="10" value="0" /></label>
+  </div>
+  <div class="row">
+    <label>Quiz 3 (max 10): <input id="q3" type="number" min="0" max="10" value="0" /></label>
+    <label>Make-up Quiz (max 10): <input id="qm" type="number" min="0" max="10" value="0" /></label>
+  </div>
+
+  <div class="row">
+    <label>Midterm (out of 100): <input id="mid" type="number" min="0" max="100" value="0" /></label>
+    <label>Practical (out of 100): <input id="prac" type="number" min="0" max="100" value="0" /></label>
+    <label>Final (out of 50): <input id="fin" type="number" min="0" max="50" value="0" /></label>
+  </div>
+
+  <div class="row">
+    <label>Take best N quizzes (1–4): <input id="take" type="number" min="1" max="4" value="2" /></label>
+    <small>Quizzes are scored out of 10 each. The sum of the best N will be normalized.</small>
+  </div>
+
+  <button id="calculate">Calculate</button>
+
+  <div class="result" id="res">Results appear here</div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('calculate').addEventListener('click', calc);
+    });
+
+    function readNumber(id, fallback = 0) {
+      const v = Number(document.getElementById(id).value);
+      return Number.isFinite(v) ? v : fallback;
+    }
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+    function calc() {
+      // Read quizzes (max 10 each)
+      const quizzes = [
+        readNumber('q1'),
+        readNumber('q2'),
+        readNumber('q3'),
+        readNumber('qm')
+      ].map(x => clamp(x, 0, 10));
+
+      // Other inputs
+      const mid = clamp(readNumber('mid'), 0, 100);
+      const prac = clamp(readNumber('prac'), 0, 100);
+      const fin = clamp(readNumber('fin'), 0, 50);
+
+      let take = parseInt(document.getElementById('take').value, 10);
+      if (!Number.isFinite(take) || isNaN(take)) take = 2;
+      take = clamp(take, 1, quizzes.length);
+
+      // Sort descending and sum best 'take' quizzes
+      quizzes.sort((a, b) => b - a);
+      const best = quizzes.slice(0, take);
+      const sumBest = best.reduce((s, x) => s + x, 0);
+
+      // Weights (default model: coursework = 50 points, final = 50 points)
+      // Within coursework: quizzes = 20, midterm = 25, practical = 5 (these sum to 50)
+      const relQuiz = 20;
+      const relMid = 25;
+      const relPrac = 5;
+      const relTotal = relQuiz + relMid + relPrac; // 50
+
+      // Convert quiz sum to a percentage based on max-per-quiz = 10
+      const quizPct = sumBest / (take * 10); // 0..1
+      // Quiz weighted out of coursework portion (20 points relative)
+      const quizWeighted = quizPct * relQuiz;
+
+      // Mid and practical are already out of 100, convert to relative coursework points
+      const midWeighted = (mid / 100) * relMid;
+      const pracWeighted = (prac / 100) * relPrac;
+
+      // Coursework score (out of relTotal, which equals 50 in this scheme)
+      const courseworkScore = quizWeighted + midWeighted + pracWeighted;
+
+      // Final input is out of 50 and contributes directly to the other 50 points
+      const finalScore = fin; // 0..50
+
+      // Total out of 100
+      const total = courseworkScore + finalScore;
+
+      // Display results
+      const warnings = [];
+      if (total > 100.001) warnings.push('Total exceeds 100 — check inputs/weights.');
+      const res = document.getElementById('res');
+      res.innerHTML = `
+        <div>Best ${take} quizzes: ${best.map(x => x.toFixed(1)).join(', ')} → sum = ${sumBest.toFixed(2)} (each quiz max 10)</div>
+        <div>Quizzes (normalized) → weighted: ${quizWeighted.toFixed(2)} / ${relQuiz}</div>
+        <div>Midterm weighted: ${midWeighted.toFixed(2)} / ${relMid}</div>
+        <div>Practical weighted: ${pracWeighted.toFixed(2)} / ${relPrac}</div>
+        <div><strong>Coursework subtotal: ${courseworkScore.toFixed(2)} / ${relTotal}</strong></div>
+        <div>Final (out of 50): ${finalScore.toFixed(2)} / 50</div>
+        <div style="margin-top:8px"><strong>Total = ${total.toFixed(2)} / 100</strong></div>
+        ${warnings.length ? `<div class="error" style="margin-top:8px">${warnings.join(' ')}</div>` : ''}
+      `;
+    }
+  </script>
+</body>
+</html>
